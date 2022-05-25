@@ -6,7 +6,7 @@ namespace GrowthBook
 {
     public struct Namespace
     {
-        public Namespace(string id, float start, float end)
+        public Namespace(string id, double start, double end)
         {
             Id = id;
             Start = start;
@@ -14,8 +14,8 @@ namespace GrowthBook
         }
 
         public string Id { get; }
-        public float Start { get; }
-        public float End { get; }
+        public double Start { get; }
+        public double End { get; }
 
         public override string ToString() => $"({Id}, {Start}, {End})";
     }

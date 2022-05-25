@@ -13,30 +13,6 @@ namespace GrowthBook
 }
 
 
-//def getBucketRanges(
-//    numVariations: int, coverage: float = 1, weights: "list[float]" = None
-//) -> "list[tuple[float,float]]":
-//    if coverage< 0:
-//        coverage = 0
-//    if coverage> 1:
-//        coverage = 1
-//    if weights is None:
-//        weights = getEqualWeights(numVariations)
-//    if len(weights) != numVariations:
-//        weights = getEqualWeights(numVariations)
-//    if sum(weights) < 0.99 or sum(weights) > 1.01:
-//        weights = getEqualWeights(numVariations)
-
-//    cumulative = 0
-//    ranges = []
-//    for w in weights:
-//        start = cumulative
-//        cumulative += w
-//        ranges.append((start, start + coverage* w))
-
-//    return ranges
-
-
 //def chooseVariation(n: float, ranges: "list[tuple[float,float]]") -> int:
 //    for i, r in enumerate(ranges) :
 //        if n >= r[0] and n<r[1]:

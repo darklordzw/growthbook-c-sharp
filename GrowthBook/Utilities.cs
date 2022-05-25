@@ -21,7 +21,7 @@ namespace GrowthBook
             return hval;
         }
 
-        public static float GBhash(string str)
+        public static double GBhash(string str)
         {
             uint n = FNV32A(str);
             return (n % 1000) / 1000.0f;
@@ -29,20 +29,74 @@ namespace GrowthBook
 
         public static bool InNamespace(string userId, Namespace nSpace)
         {
-            float n = GBhash(userId + "__" + nSpace.Id);
+            double n = GBhash(userId + "__" + nSpace.Id);
             return n >= nSpace.Start && n < nSpace.End;
         }
 
-        public static float[] GetEqualWeights(int numVariations) {
+        public static double[] GetEqualWeights(int numVariations) {
             if (numVariations < 1)
-                return new float[0];
+                return new double[0];
 
-            float[] weights = new float[numVariations];
+            double[] weights = new double[numVariations];
             for (int i = 0; i < numVariations; i++)
             {
                 weights[i] = 1.0f / numVariations;
             }
             return weights;
         }
+
+        public static double[][] GetBucketRanges(int numVariations, double coverage = 1, double[] weights = null)
+        {
+            if (coverage < 0)
+                coverage = 0;
+            if (coverage > 1)
+                coverage = 1;
+            if (weights == null)
+                weights = GetEqualWeights(numVariations);
+            if (weights.Length != numVariations)
+                weights = GetEqualWeights(numVariations);
+
+            double totalWeight = 0;
+            foreach(double w in weights)
+            {
+                totalWeight += w;
+            }
+            if (totalWeight < 0.99 || totalWeight > 1.01f)
+                weights = GetEqualWeights(numVariations);
+
+            double cumulative = 0;
+            double[][] ranges = new double[weights.Length][];
+            for (int i = 0; i < weights.Length; i++)
+            {
+                double start = cumulative;
+                cumulative += weights[i];
+                ranges[i] = new double[] { start, start + coverage * weights[i] };
+            }
+
+            return ranges;
+        }
+
+        //def getBucketRanges(
+        //    numVariations: int, coverage: double = 1, weights: "list[double]" = None
+        //) -> "list[tuple[double,double]]":
+        //    if coverage< 0:
+        //        coverage = 0
+        //    if coverage> 1:
+        //        coverage = 1
+        //    if weights is None:
+        //        weights = getEqualWeights(numVariations)
+        //    if len(weights) != numVariations:
+        //        weights = getEqualWeights(numVariations)
+        //    if sum(weights) < 0.99 or sum(weights) > 1.01:
+        //        weights = getEqualWeights(numVariations)
+
+        //    cumulative = 0
+        //    ranges = []
+        //    for w in weights:
+        //        start = cumulative
+        //        cumulative += w
+        //        ranges.append((start, start + coverage* w))
+
+        //    return ranges
     }
 }
