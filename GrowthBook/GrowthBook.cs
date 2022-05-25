@@ -12,21 +12,6 @@ namespace GrowthBook
     }
 }
 
-//import re
-//from urllib.parse import urlparse, parse_qs
-//from typing import Optional
-
-
-//def inNamespace(userId: str, namespace: "tuple[str,float,float]") -> bool:
-//    n = gbhash(userId + "__" + namespace[0])
-//    return n >= namespace[1] and n< namespace[2]
-
-
-//def getEqualWeights(numVariations: int) -> "list[float]":
-//    if numVariations< 1:
-//        return []
-//    return [1 / numVariations for i in range(numVariations)]
-
 
 //def getBucketRanges(
 //    numVariations: int, coverage: float = 1, weights: "list[float]" = None
