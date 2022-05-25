@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31911.196
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrowthBook", "GrowthBook.csproj", "{EB2E6969-D39E-4093-B267-826226DE50DC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GrowthBook", "GrowthBook\GrowthBook.csproj", "{EB2E6969-D39E-4093-B267-826226DE50DC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "..\Tests\Tests.csproj", "{280C4B04-96D2-4745-8267-6328F7A6B39B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{280C4B04-96D2-4745-8267-6328F7A6B39B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
