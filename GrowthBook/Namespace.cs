@@ -1,17 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 
-namespace GrowthBook
-{
-    public struct Namespace
-    {
-        public Namespace(string id, double start, double end)
-        {
+namespace GrowthBook {
+    public class Namespace {
+        public Namespace(string id, double start, double end) {
             Id = id;
             Start = start;
             End = end;
         }
+
+        public Namespace(List<object> tuple) : this((string)tuple[0], (double)tuple[1], (double)tuple[2]) { }
 
         public string Id { get; }
         public double Start { get; }
