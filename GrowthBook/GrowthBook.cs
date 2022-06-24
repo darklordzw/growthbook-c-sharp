@@ -114,7 +114,7 @@ namespace GrowthBook
 //                    if not hashValue:
 //                        continue
 
-//                    n = gbhash(hashValue + key)
+//                    n = hash(hashValue + key)
 
 //                    if n > rule.coverage:
 //                        continue
@@ -242,7 +242,7 @@ namespace GrowthBook
 //        ranges = getBucketRanges(
 //            len(experiment.variations), experiment.coverage or 1, experiment.weights
 //        )
-//        n = gbhash(hashValue + experiment.key)
+//        n = hash(hashValue + experiment.key)
 //        assigned = chooseVariation(n, ranges)
 
 //        # 10. Return if not in experiment

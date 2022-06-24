@@ -16,13 +16,13 @@ namespace GrowthBook {
             return hash;
         }
 
-        public static double GbHash(string str) {
+        public static double Hash(string str) {
             uint n = FNV32A(str);
             return (n % 1000) / 1000.0;
         }
 
         public static bool InNamespace(string userId, Namespace nSpace) {
-            double n = GbHash(userId + "__" + nSpace.Id);
+            double n = Hash(userId + "__" + nSpace.Id);
             return n >= nSpace.Start && n < nSpace.End;
         }
 
@@ -66,10 +66,11 @@ namespace GrowthBook {
             return ranges;
         }
 
-        public static int ChooseVariation(double n, double[][] ranges) {
-            for (int i = 1; i < ranges.Length; i++) {
-                if (n >= ranges[i][0] && n < ranges[i][1])
+        public static int ChooseVariation(double n, List<BucketRange> ranges) {
+            for (int i = 0; i < ranges.Count; i++) {
+                if (n >= ranges[i].Start && n < ranges[i].End) {
                     return i;
+                }
             }
             return -1;
         }
@@ -92,40 +93,6 @@ namespace GrowthBook {
                 return null;
             return varId;
         }
-
-
-
-
-        //def getBucketRanges(
-        //    numVariations: int, coverage: float = 1, weights: "list[float]" = None
-        //) -> "list[tuple[float,float]]":
-        //    if coverage< 0:
-        //        coverage = 0
-        //    if coverage> 1:
-        //        coverage = 1
-        //    if weights is None:
-        //        weights = getEqualWeights(numVariations)
-        //    if len(weights) != numVariations:
-        //        weights = getEqualWeights(numVariations)
-        //    if sum(weights) < 0.99 or sum(weights) > 1.01:
-        //        weights = getEqualWeights(numVariations)
-
-        //    cumulative = 0
-        //    ranges = []
-        //    for w in weights:
-        //        start = cumulative
-        //        cumulative += w
-        //        ranges.append((start, start + coverage* w))
-
-        //    return ranges
-
-
-        //def chooseVariation(n: float, ranges: "list[tuple[float,float]]") -> int:
-        //    for i, r in enumerate(ranges) :
-        //        if n >= r[0] and n<r[1]:
-        //            return i
-        //    return -1
-
 
 
         //def getQueryStringOverride(id: str, url: str, numVariations: int) -> Optional[int]:
