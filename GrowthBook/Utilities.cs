@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Text.RegularExpressions;
+using System.Web;
 
 namespace GrowthBook {
     public static class Utilities {
@@ -76,183 +79,217 @@ namespace GrowthBook {
         }
 
         public static int? GetQueryStringOverride(string id, string url, int numVariations) {
-            Uri res = new Uri(url);
+            if (string.IsNullOrWhiteSpace(url))
+                return null;
 
+            Uri res = new Uri(url);
             if (string.IsNullOrWhiteSpace(res.Query))
                 return null;
 
-            NameValueCollection qs = System.Web.HttpUtility.ParseQueryString(res.Query);
-            if (string.IsNullOrWhiteSpace(qs.Get("id")))
+            NameValueCollection qs = HttpUtility.ParseQueryString(res.Query);
+            if (string.IsNullOrWhiteSpace(qs.Get(id)))
                 return null;
 
-            string variation = qs.Get("id");
+            string variation = qs.Get(id);
             int varId;
-            if (!int.TryParse(variation, out varId))
+            if (!int.TryParse(variation, out varId)) {
                 return null;
-            if (varId < 0 || varId >= numVariations)
+            }
+            if (varId < 0 || varId >= numVariations) {
                 return null;
+            }
             return varId;
         }
 
+        public static bool EvalCondition(IDictionary<string, object> attributes, IDictionary<string, object> condition) {
+            if (condition.ContainsKey("$or")) {
+                return EvalOr(attributes, (IList<IDictionary<string, object>>)condition["$or"]);
+            }
+            if (condition.ContainsKey("$nor")) {
+                return !EvalOr(attributes, (IList<IDictionary<string, object>>)condition["$nor"]);
+            }
+            if (condition.ContainsKey("$and")) {
+                return EvalAnd(attributes, (IList<IDictionary<string, object>>)condition["$and"]);
+            }
+            if (condition.ContainsKey("$not")) {
+                return !EvalCondition(attributes, (IDictionary<string, object>)condition["$not"]);
+            }
 
-        //def getQueryStringOverride(id: str, url: str, numVariations: int) -> Optional[int]:
-        //    res = urlparse(url)
-        //    if not res.query:
-        //        return None
-        //   qs = parse_qs(res.query)
-        //    if id not in qs:
-        //        return None
-        //   variation = qs[id][0]
-        //    if variation is None or not variation.isdigit():
-        //        return None
-        //   varId = int(variation)
-        //    if varId< 0 or varId >= numVariations:
-        //        return None
-        //    return varId
+            foreach (string key in condition.Keys) {
+                if (!EvalConditionValue(condition[key], GetPath(attributes, key))) {
+                    return false;
+                }
+            }
 
+            return true;
+        }
 
+        private static bool EvalOr(IDictionary<string, object> attributes, IList<IDictionary<string, object>> conditions) {
+            if (conditions.Count == 0) {
+                return true;
+            }
 
-        //def evalCondition(attributes: dict, condition: dict) -> bool:
-        //    if "$or" in condition:
-        //        return evalOr(attributes, condition["$or"])
-        //    if "$nor" in condition:
-        //        return not evalOr(attributes, condition["$nor"])
-        //    if "$and" in condition:
-        //        return evalAnd(attributes, condition["$and"])
-        //    if "$not" in condition:
-        //        return not evalCondition(attributes, condition["$not"])
+            foreach (IDictionary<string, object> condition in conditions) {
+                if (EvalCondition(attributes, condition)) {
+                    return true;
+                }
+            }
 
-        //    for key, value in condition.items():
-        //        if not evalConditionValue(value, getPath(attributes, key)):
-        //            return False
+            return false;
+        }
 
-        //    return True
+        private static bool EvalAnd(IDictionary<string, object> attributes, IList<IDictionary<string, object>> conditions) {
+            foreach (Dictionary<string, object> condition in conditions) {
+                if (!EvalCondition(attributes, condition)) {
+                    return false;
+                }
+            }
 
+            return true;
+        }
 
-        //def evalOr(attributes, conditions) -> bool:
-        //    if len(conditions) == 0:
-        //        return True
+        private static bool IsOperatorObject(IDictionary<string, object> obj) {
+            foreach(string key in obj.Keys) {
+                if (!key.StartsWith("$")) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
-        //    for condition in conditions:
-        //        if evalCondition(attributes, condition) :
-        //            return True
-        //    return False
+        private static object GetPath(IDictionary<string, object> attributes, string path) {
+            object currentValue = attributes;
+            IDictionary<string, object> currentDict;
+            foreach (string segment in path.Split('.')) {
+                currentDict = currentValue as IDictionary<string, object>;
+                if (currentDict != null && currentDict.ContainsKey(segment)) {
+                    currentValue = currentDict[segment];
+                } else {
+                    return null;
+                }
+            }
+            return currentValue;
+        }
 
+        private static bool EvalConditionValue(object conditionValue, object attributeValue) {
+            IDictionary<string, object> conditionDict = conditionValue as IDictionary<string, object>;
 
-        //def evalAnd(attributes, conditions) -> bool:
-        //    for condition in conditions:
-        //        if not evalCondition(attributes, condition):
-        //            return False
-        //    return True
+            if (conditionDict != null && IsOperatorObject(conditionDict)) {
+                foreach (string key in conditionDict.Keys) {
+                    if (!EvalOperatorCondition(key, attributeValue, conditionDict[key])) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return conditionValue.Equals(attributeValue);
+        }
 
+        private static bool ElemMatch(IDictionary<string, object> condition, object attributeVaue) {
+            if (!(attributeVaue is IEnumerable)) {
+                return false;
+            }
 
-        //def isOperatorObject(obj) -> bool:
-        //    for key in obj.keys():
-        //        if key[0] != "$":
-        //            return False
-        //    return True
+            foreach (object item in (IEnumerable)attributeVaue) {
+                if (IsOperatorObject(condition) && EvalConditionValue(condition, item)) {
+                    return true;
+                }
+                if (EvalCondition((IDictionary<string, object>)item, condition)) {
+                    return true;
+                }
+            }
 
+            return false;
+        }
 
-        //def getType(attributeValue) -> str:
-        //    t = type(attributeValue)
+        private static bool EvalOperatorCondition(string op, object attributeValue, object conditionValue) {
+            if (op.Equals("$eq")) {
+                return attributeValue.Equals(conditionValue);
+            }
+            if (op.Equals("$ne")) {
+                return !attributeValue.Equals(conditionValue);
+            }
+            if (attributeValue is IComparable) {
+                IComparable attrComp = (IComparable)attributeValue;
+                if (op.Equals("$lt")) {
+                    return attrComp.CompareTo(conditionValue) < 0;
+                }
+                if (op.Equals("$lte")) {
+                    return attrComp.CompareTo(conditionValue) <= 0;
+                }
+                if (op.Equals("$gt")) {
+                    return attrComp.CompareTo(conditionValue) > 0;
+                }
+                if (op.Equals("$gte")) {
+                    return attrComp.CompareTo(conditionValue) >= 0;
+                }
+            }
+            if (op.Equals("$regex")) {
+                Regex regex = new Regex(conditionValue.ToString(), RegexOptions.Compiled);
+                return regex.IsMatch(attributeValue.ToString());
+            }
+            if (conditionValue is IList) {
+                IList conditionList = (IList)conditionValue;
+                if (op.Equals("$in")) {
+                    return conditionList.IndexOf(attributeValue) != -1;
+                }
+                if (op.Equals("$nin")) {
+                    return conditionList.IndexOf(attributeValue) == -1;
+                }
+                if (op.Equals("$all")) {
+                    IList attrList = attributeValue as IList;
+                    if (attrList == null) {
+                        return false;
+                    }
+                    foreach (object obj in attrList) {
+                        if (!EvalConditionValue(conditionValue, obj)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            }
+            if (op.Equals("$elemMatch")) {
+                return ElemMatch((IDictionary<string, object>)conditionValue, attributeValue);
+            }
+            if (attributeValue is IList) {
+                IList attrList = (IList)attributeValue;
+                if (op.Equals("$size")) {
+                    EvalConditionValue(conditionValue, attrList.Count);
+                }
+            }
+            if (op.Equals("$exists")) {
+                return conditionValue == null || conditionValue.Equals(false) ? attributeValue == null : attributeValue != null;
+            }
+            if (op.Equals("$type")) {
+                return GetType(attributeValue).Equals(conditionValue);
+            }
+            if (op.Equals("$not")) {
+                return !EvalConditionValue(conditionValue, attributeValue);
+            }
+            return false;
+        }
 
-        //    if attributeValue is None:
-        //        return "null"
-        //    if t is int or t is float:
-        //        return "number"
-        //    if t is str:
-        //        return "string"
-        //    if t is list or t is set:
-        //        return "array"
-        //    if t is dict:
-        //        return "object"
-        //    if t is bool:
-        //        return "boolean"
-        //    return "unknown"
-
-
-        //def getPath(attributes, path):
-        //    current = attributes
-        //    for segment in path.split("."):
-        //        if type(current) is dict and segment in current:
-        //            current = current[segment]
-        //        else:
-        //            return None
-        //    return current
-
-
-        //def evalConditionValue(conditionValue, attributeValue) -> bool:
-        //    if type(conditionValue) is dict and isOperatorObject(conditionValue) :
-        //        for key, value in conditionValue.items():
-        //            if not evalOperatorCondition(key, attributeValue, value):
-        //                return False
-        //        return True
-        //    return conditionValue == attributeValue
-
-
-        //def elemMatch(condition, attributeValue) -> bool:
-        //    if not type(attributeValue) is list:
-        //        return False
-
-        //    for item in attributeValue:
-        //        if isOperatorObject(condition) :
-        //            if evalConditionValue(condition, item) :
-        //                return True
-        //        else:
-        //            if evalCondition(item, condition) :
-        //                return True
-
-        //    return False
-
-
-        //def evalOperatorCondition(operator, attributeValue, conditionValue) -> bool:
-        //    if operator == "$eq":
-        //        return attributeValue == conditionValue
-        //    elif operator == "$ne":
-        //        return attributeValue != conditionValue
-        //    elif operator == "$lt":
-        //        return attributeValue<conditionValue
-        //    elif operator == "$lte":
-        //        return attributeValue <= conditionValue
-        //    elif operator == "$gt":
-        //        return attributeValue> conditionValue
-        //    elif operator == "$gte":
-        //        return attributeValue >= conditionValue
-        //    elif operator == "$regex":
-        //        try:
-        //            r = re.compile(conditionValue)
-        //            return bool(r.search(attributeValue))
-        //        except Exception:
-        //            return False
-        //    elif operator == "$in":
-        //        return attributeValue in conditionValue
-        //    elif operator == "$nin":
-        //        return not (attributeValue in conditionValue)
-        //    elif operator == "$elemMatch":
-        //        return elemMatch(conditionValue, attributeValue)
-        //    elif operator == "$size":
-        //        if not (type(attributeValue) is list):
-        //            return False
-        //        return evalConditionValue(conditionValue, len(attributeValue))
-        //    elif operator == "$all":
-        //        if not (type(attributeValue) is list):
-        //            return False
-        //        for cond in conditionValue:
-        //            passing = False
-        //            for attr in attributeValue:
-        //                if evalConditionValue(cond, attr) :
-        //                    passing = True
-        //            if not passing:
-        //                return False
-        //        return True
-        //    elif operator == "$exists":
-        //        if not conditionValue:
-        //            return attributeValue is None
-        //        return attributeValue is not None
-        //    elif operator == "$type":
-        //        return getType(attributeValue) == conditionValue
-        //    elif operator == "$not":
-        //        return not evalConditionValue(conditionValue, attributeValue)
-        //    return False
+        private static string GetType(object attributeValue) {
+            if (attributeValue == null) {
+                return null;
+            }
+            if (attributeValue is int || attributeValue is float || attributeValue is double) {
+                return "number";
+            }
+            if (attributeValue is string) {
+                return "string";
+            }
+            if (attributeValue is IList) {
+                return "array";
+            }
+            if (attributeValue is IDictionary) {
+                return "object";
+            }
+            if (attributeValue is bool) {
+                return "boolean";
+            }
+            return "unknown";
+        }
     }
 }

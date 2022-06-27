@@ -137,5 +137,24 @@ namespace Tests {
                 };
             }
         }
+
+        [TestMethod]
+        [DynamicData(nameof(GetQueryStringOverrideTests), DynamicDataSourceType.Method, DynamicDataDisplayName = nameof(GetTestNames))]
+        public void GetQueryStringOverride(string testName, string id, string url, int numVariations, int? expected) {
+            int? actual = GrowthBook.Utilities.GetQueryStringOverride(id, url, numVariations);
+            Assert.AreEqual(expected, actual);
+        }
+
+        public static IEnumerable<object[]> GetQueryStringOverrideTests() {
+            foreach (JArray testCase in (JArray)testCases["getQueryStringOverride"]) {
+                yield return new object[] {
+                    testCase[0].ToObject<string>(),
+                    testCase[1].ToObject<string>(),
+                    testCase[2].ToObject<string>(),
+                    testCase[3].ToObject<int>(),
+                    testCase[4].ToObject<int?>(),
+                };
+            }
+        }
     }
 }
