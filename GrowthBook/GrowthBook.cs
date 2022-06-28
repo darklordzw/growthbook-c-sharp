@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -11,64 +12,46 @@ namespace GrowthBook
     /// </summary>
     public class GrowthBook
     {
-        private bool enabled = true;
-        private Dictionary<string, object> attributes;
-        private string url;
-        private Dictionary<string, Feature> features;
-        private Dictionary<string, int> forcedVariations;
-        private bool qaMode;
-        public Func<Experiment, ExperimentResult, Task> TrackingCallback { get; set; }
+        private Context context;
 
         public GrowthBook(Context context) {
-            
+            this.context = context;
+
+            //# Deprecated args
+            //_user = user
+            //_groups = groups
+            //_overrides = overrides
+            //_forcedVariations = forcedVariations
+
+            //_tracked = { }
+            //_assigned = { }
+            //_subscriptions = set()
+        }
+
+        public bool IsOn(string key) {
+            return EvalFeature(key).On;
+        }
+
+        public bool IsOff(string key) {
+            return EvalFeature(key).Off;
+        }
+
+        public T GetFeatureValue<T>(string key, T fallback) {
+            FeatureResult result = EvalFeature(key);
+            if (result == null) {
+                return fallback;
+            }
+            return result.Value.ToObject<T>();
+        }
+
+        public FeatureResult EvalFeature(string key) {
+            // TODO: Port this next!
+            return null;
         }
     }
 }
 
 //class GrowthBook(object):
-//    def __init__(
-//        self,
-//        enabled: bool = True,
-//        attributes: dict = { },
-//        url: str = "",
-//        features: dict = {},
-//        qaMode: bool = False,
-//        trackingCallback=None,
-//        # Deprecated args
-//        user: dict = {},
-//        groups: dict = {},
-//        overrides: dict = {},
-//        forcedVariations: dict = {},
-//    ):
-//        self._enabled = enabled
-//        self._attributes = attributes
-//        self._url = url
-//        self._features: dict[str, Feature] = { }
-
-//        if features:
-//            self.setFeatures(features)
-
-//        self._qaMode = qaMode
-//        self._trackingCallback = trackingCallback
-
-//        # Deprecated args
-//        self._user = user
-//        self._groups = groups
-//        self._overrides = overrides
-//        self._forcedVariations = forcedVariations
-
-//        self._tracked = { }
-//        self._assigned = {}
-//        self._subscriptions = set()
-
-//    def setFeatures(self, features: dict) -> None:
-//        self._features = {}
-//        for key, feature in features.items():
-//            if isinstance(feature, Feature) :
-//                self._features[key] = feature
-//            else:
-//                self._features[key] = Feature(**feature)
-
 //    def getFeatures(self) -> "dict[str,Feature]":
 //        return self._features
 
@@ -88,16 +71,6 @@ namespace GrowthBook
 //        self._groups.clear()
 //        self._attributes.clear()
 //        self._features.clear()
-
-//    def isOn(self, key: str) -> bool:
-//        return self.evalFeature(key).on
-
-//    def isOff(self, key: str) -> bool:
-//        return self.evalFeature(key).off
-
-//    def getFeatureValue(self, key: str, fallback) :
-//        res = self.evalFeature(key)
-//        return res.value if res.value is not None else fallback
 
 //    def evalFeature(self, key: str) -> FeatureResult:
 //        if key not in self._features:
