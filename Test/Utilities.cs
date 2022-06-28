@@ -156,5 +156,23 @@ namespace Tests {
                 };
             }
         }
+
+        [TestMethod]
+        [DynamicData(nameof(EvalConditionTests), DynamicDataSourceType.Method, DynamicDataDisplayName = nameof(GetTestNames))]
+        public void EvalCondition(string testName, JObject condition, JToken attributes, bool expected) {
+            bool actual = GrowthBook.Utilities.EvalCondition(attributes, condition);
+            Assert.AreEqual(expected, actual);
+        }
+
+        public static IEnumerable<object[]> EvalConditionTests() {
+            foreach (JArray testCase in (JArray)testCases["evalCondition"]) {
+                yield return new object[] {
+                    testCase[0].ToObject<string>(),
+                    testCase[1],
+                    testCase[2],
+                    testCase[3].ToObject<bool>()
+                };
+            }
+        }
     }
 }

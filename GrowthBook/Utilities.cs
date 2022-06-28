@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Web;
 
@@ -101,22 +103,22 @@ namespace GrowthBook {
             return varId;
         }
 
-        public static bool EvalCondition(IDictionary<string, object> attributes, IDictionary<string, object> condition) {
+        public static bool EvalCondition(JToken attributes, JObject condition) {
             if (condition.ContainsKey("$or")) {
-                return EvalOr(attributes, (IList<IDictionary<string, object>>)condition["$or"]);
+                return EvalOr(attributes, (JArray)condition["$or"]);
             }
             if (condition.ContainsKey("$nor")) {
-                return !EvalOr(attributes, (IList<IDictionary<string, object>>)condition["$nor"]);
+                return !EvalOr(attributes, (JArray)condition["$nor"]);
             }
             if (condition.ContainsKey("$and")) {
-                return EvalAnd(attributes, (IList<IDictionary<string, object>>)condition["$and"]);
+                return EvalAnd(attributes, (JArray)condition["$and"]);
             }
             if (condition.ContainsKey("$not")) {
-                return !EvalCondition(attributes, (IDictionary<string, object>)condition["$not"]);
+                return !EvalCondition(attributes, (JObject)condition["$not"]);
             }
 
-            foreach (string key in condition.Keys) {
-                if (!EvalConditionValue(condition[key], GetPath(attributes, key))) {
+            foreach (JProperty property in condition.Properties()) {
+                if (!EvalConditionValue(property.Value, attributes.SelectToken(property.Name))) {
                     return false;
                 }
             }
@@ -124,12 +126,12 @@ namespace GrowthBook {
             return true;
         }
 
-        private static bool EvalOr(IDictionary<string, object> attributes, IList<IDictionary<string, object>> conditions) {
+        private static bool EvalOr(JToken attributes, JArray conditions) {
             if (conditions.Count == 0) {
                 return true;
             }
 
-            foreach (IDictionary<string, object> condition in conditions) {
+            foreach (JObject condition in conditions) {
                 if (EvalCondition(attributes, condition)) {
                     return true;
                 }
@@ -138,8 +140,8 @@ namespace GrowthBook {
             return false;
         }
 
-        private static bool EvalAnd(IDictionary<string, object> attributes, IList<IDictionary<string, object>> conditions) {
-            foreach (Dictionary<string, object> condition in conditions) {
+        private static bool EvalAnd(JToken attributes, JArray conditions) {
+            foreach (JObject condition in conditions) {
                 if (!EvalCondition(attributes, condition)) {
                     return false;
                 }
@@ -148,53 +150,41 @@ namespace GrowthBook {
             return true;
         }
 
-        private static bool IsOperatorObject(IDictionary<string, object> obj) {
-            foreach(string key in obj.Keys) {
-                if (!key.StartsWith("$")) {
+        private static bool IsOperatorObject(JObject obj) {
+            foreach(JProperty property in obj.Properties()) {
+                if (!property.Name.StartsWith("$")) {
                     return false;
                 }
             }
             return true;
         }
 
-        private static object GetPath(IDictionary<string, object> attributes, string path) {
-            object currentValue = attributes;
-            IDictionary<string, object> currentDict;
-            foreach (string segment in path.Split('.')) {
-                currentDict = currentValue as IDictionary<string, object>;
-                if (currentDict != null && currentDict.ContainsKey(segment)) {
-                    currentValue = currentDict[segment];
-                } else {
-                    return null;
-                }
-            }
-            return currentValue;
-        }
-
-        private static bool EvalConditionValue(object conditionValue, object attributeValue) {
-            IDictionary<string, object> conditionDict = conditionValue as IDictionary<string, object>;
-
-            if (conditionDict != null && IsOperatorObject(conditionDict)) {
-                foreach (string key in conditionDict.Keys) {
-                    if (!EvalOperatorCondition(key, attributeValue, conditionDict[key])) {
-                        return false;
+        private static bool EvalConditionValue(JToken conditionValue, JToken attributeValue) {
+            if (conditionValue.Type == JTokenType.Object) {
+                JObject conditionDict = (JObject)conditionValue;
+                if (conditionDict != null && IsOperatorObject(conditionDict)) {
+                    foreach (JProperty property in conditionDict.Properties()) {
+                        if (!EvalOperatorCondition(property.Name, attributeValue, property.Value)) {
+                            return false;
+                        }
                     }
+                    return true;
                 }
-                return true;
             }
-            return conditionValue.Equals(attributeValue);
+            
+            return JToken.DeepEquals(conditionValue, attributeValue);
         }
 
-        private static bool ElemMatch(IDictionary<string, object> condition, object attributeVaue) {
-            if (!(attributeVaue is IEnumerable)) {
+        private static bool ElemMatch(JObject condition, JToken attributeVaue) {
+            if (attributeVaue.Type != JTokenType.Array) {
                 return false;
             }
 
-            foreach (object item in (IEnumerable)attributeVaue) {
+            foreach (JToken item in (JArray)attributeVaue) {
                 if (IsOperatorObject(condition) && EvalConditionValue(condition, item)) {
                     return true;
                 }
-                if (EvalCondition((IDictionary<string, object>)item, condition)) {
+                if (EvalCondition(item, condition)) {
                     return true;
                 }
             }
@@ -202,7 +192,7 @@ namespace GrowthBook {
             return false;
         }
 
-        private static bool EvalOperatorCondition(string op, object attributeValue, object conditionValue) {
+        private static bool EvalOperatorCondition(string op, JToken attributeValue, JToken conditionValue) {
             if (op.Equals("$eq")) {
                 return attributeValue.Equals(conditionValue);
             }
@@ -225,24 +215,33 @@ namespace GrowthBook {
                 }
             }
             if (op.Equals("$regex")) {
-                Regex regex = new Regex(conditionValue.ToString(), RegexOptions.Compiled);
-                return regex.IsMatch(attributeValue.ToString());
+                try {
+                    Regex regex = new Regex(conditionValue.ToString(), RegexOptions.Compiled);
+                    return regex.IsMatch(attributeValue.ToString());
+                } catch (ArgumentException) {
+                    return false;
+                }
             }
-            if (conditionValue is IList) {
-                IList conditionList = (IList)conditionValue;
+            if (conditionValue.Type == JTokenType.Array) {
+                JArray conditionList = (JArray)conditionValue;
                 if (op.Equals("$in")) {
-                    return conditionList.IndexOf(attributeValue) != -1;
+                    return attributeValue != null && conditionList.FirstOrDefault(j => j.ToString().Equals(attributeValue.ToString())) != null;
                 }
                 if (op.Equals("$nin")) {
-                    return conditionList.IndexOf(attributeValue) == -1;
+                    return conditionList.FirstOrDefault(j => j.ToString().Equals(attributeValue.ToString())) == null;
                 }
                 if (op.Equals("$all")) {
-                    IList attrList = attributeValue as IList;
-                    if (attrList == null) {
+                    if (attributeValue.Type != JTokenType.Array) {
                         return false;
                     }
-                    foreach (object obj in attrList) {
-                        if (!EvalConditionValue(conditionValue, obj)) {
+                    foreach (JToken condition in conditionList) {
+                        bool passing = false;
+                        foreach (JToken attr in (JArray)attributeValue) {
+                            if (EvalConditionValue(condition, attr)) {
+                                passing = true;
+                            }
+                        }
+                        if (!passing) {
                             return false;
                         }
                     }
@@ -250,19 +249,20 @@ namespace GrowthBook {
                 }
             }
             if (op.Equals("$elemMatch")) {
-                return ElemMatch((IDictionary<string, object>)conditionValue, attributeValue);
+                return ElemMatch((JObject)conditionValue, attributeValue);
             }
-            if (attributeValue is IList) {
-                IList attrList = (IList)attributeValue;
-                if (op.Equals("$size")) {
-                    EvalConditionValue(conditionValue, attrList.Count);
+            if (op.Equals("$size")) {
+                if (attributeValue?.Type == JTokenType.Array) {
+                    return EvalConditionValue(conditionValue, ((JArray)attributeValue).Count);
                 }
+                return false;
             }
             if (op.Equals("$exists")) {
-                return conditionValue == null || conditionValue.Equals(false) ? attributeValue == null : attributeValue != null;
+                return conditionValue.ToObject<bool>() ? attributeValue != null && attributeValue.Type != JTokenType.Null && attributeValue.Type != JTokenType.Undefined :
+                    attributeValue == null || attributeValue.Type == JTokenType.Null || attributeValue.Type == JTokenType.Undefined;
             }
             if (op.Equals("$type")) {
-                return GetType(attributeValue).Equals(conditionValue);
+                return GetType(attributeValue).Equals(conditionValue.ToString());
             }
             if (op.Equals("$not")) {
                 return !EvalConditionValue(conditionValue, attributeValue);
@@ -270,26 +270,29 @@ namespace GrowthBook {
             return false;
         }
 
-        private static string GetType(object attributeValue) {
+        private static string GetType(JToken attributeValue) {
             if (attributeValue == null) {
-                return null;
+                return "null";
             }
-            if (attributeValue is int || attributeValue is float || attributeValue is double) {
-                return "number";
+
+            switch(attributeValue.Type) {
+                case JTokenType.Null:
+                case JTokenType.Undefined:
+                    return "null";
+                case JTokenType.Integer:
+                case JTokenType.Float:
+                    return "number";
+                case JTokenType.Array:
+                    return "array";
+                case JTokenType.Boolean:
+                    return "boolean";
+                case JTokenType.String:
+                    return "string";
+                case JTokenType.Object:
+                    return "object";
+                default:
+                    return "unknown";
             }
-            if (attributeValue is string) {
-                return "string";
-            }
-            if (attributeValue is IList) {
-                return "array";
-            }
-            if (attributeValue is IDictionary) {
-                return "object";
-            }
-            if (attributeValue is bool) {
-                return "boolean";
-            }
-            return "unknown";
         }
     }
 }
