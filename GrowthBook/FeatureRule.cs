@@ -1,13 +1,14 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace GrowthBook {
     public class FeatureRule {
-        public Dictionary<string, object> Condition { get; set; }
+        public JObject Condition { get; set; }
         public double Coverage { get; set; } = 1;
         public int Force { get; set; }
-        public List<object> Variations { get; set; }
+        public JArray Variations { get; set; }
         public string Key { get; set; }
         public List<double> Weights { get; set; }
         public Namespace Namespace { get; set; }

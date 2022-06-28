@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System;
 
 namespace GrowthBook {
     public class BucketRange {
@@ -6,8 +6,6 @@ namespace GrowthBook {
             Start = start;
             End = end;
         }
-
-        public BucketRange(List<double> tuple) : this(tuple[0], tuple[1]) { }
 
         public double Start { get; set; }
         public double End { get; set; }
@@ -19,5 +17,11 @@ namespace GrowthBook {
             }
             return false;
         }
+
+        public override int GetHashCode() {
+            throw new NotImplementedException();
+        }
+
+        public override string ToString() => $"({Start}, {End})";
     }
 }

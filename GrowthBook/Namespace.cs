@@ -8,8 +8,6 @@ namespace GrowthBook {
             End = end;
         }
 
-        public Namespace(List<object> tuple) : this((string)tuple[0], (double)tuple[1], (double)tuple[2]) { }
-
         public string Id { get; }
         public double Start { get; }
         public double End { get; }

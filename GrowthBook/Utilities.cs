@@ -9,18 +9,6 @@ using System.Web;
 
 namespace GrowthBook {
     public static class Utilities {
-        public static uint FNV32A(string value) {
-            uint hash = 0x811c9dc5;
-            uint prime = 0x01000193;
-
-            foreach (var c in value.ToCharArray()) {
-                hash ^= c;
-                hash *= prime;
-            }
-
-            return hash;
-        }
-
         public static double Hash(string str) {
             uint n = FNV32A(str);
             return (n % 1000) / 1000.0;
@@ -31,38 +19,38 @@ namespace GrowthBook {
             return n >= nSpace.Start && n < nSpace.End;
         }
 
-        public static double[] GetEqualWeights(int numVariations) {
-            if (numVariations < 1) {
-                return new double[0];
+        public static IList<double> GetEqualWeights(int numVariations) {
+            List<double> weights = new List<double>();
+
+            if (numVariations >= 1) {
+                for (int i = 0; i < numVariations; i++) {
+                    weights.Add(1.0 / numVariations);
+                }
             }
 
-            double[] weights = new double[numVariations];
-            for (int i = 0; i < numVariations; i++) {
-                weights[i] = 1.0 / numVariations;
-            }
             return weights;
         }
 
-        public static List<BucketRange> GetBucketRanges(int numVariations, double coverage = 1, double[] weights = null) {
-            if (coverage < 0)
+        public static IList<BucketRange> GetBucketRanges(int numVariations, double coverage = 1, IList<double> weights = null) {
+            if (coverage < 0) {
                 coverage = 0;
-            if (coverage > 1)
+            } else if (coverage > 1) {
                 coverage = 1;
-            if (weights == null)
-                weights = GetEqualWeights(numVariations);
-            if (weights.Length != numVariations)
-                weights = GetEqualWeights(numVariations);
-
-            double totalWeight = 0;
-            foreach (double w in weights) {
-                totalWeight += w;
             }
-            if (totalWeight < 0.99 || totalWeight > 1.01f)
+
+            if (weights?.Count != numVariations) {
                 weights = GetEqualWeights(numVariations);
+            }
+
+            double totalWeight = weights.Sum();
+            if (totalWeight < 0.99 || totalWeight > 1.01f) {
+                weights = GetEqualWeights(numVariations);
+            }
 
             double cumulative = 0;
             List<BucketRange> ranges = new List<BucketRange>();
-            for (int i = 0; i < weights.Length; i++) {
+
+            for (int i = 0; i < weights.Count; i++) {
                 double start = cumulative;
                 cumulative += weights[i];
                 ranges.Add(new BucketRange(start, start + coverage * weights[i]));
@@ -71,35 +59,41 @@ namespace GrowthBook {
             return ranges;
         }
 
-        public static int ChooseVariation(double n, List<BucketRange> ranges) {
+        public static int ChooseVariation(double n, IList<BucketRange> ranges) {
             for (int i = 0; i < ranges.Count; i++) {
                 if (n >= ranges[i].Start && n < ranges[i].End) {
                     return i;
                 }
             }
+
             return -1;
         }
 
         public static int? GetQueryStringOverride(string id, string url, int numVariations) {
-            if (string.IsNullOrWhiteSpace(url))
+            if (string.IsNullOrWhiteSpace(url)) {
                 return null;
+            }
 
             Uri res = new Uri(url);
-            if (string.IsNullOrWhiteSpace(res.Query))
+            if (string.IsNullOrWhiteSpace(res.Query)) {
                 return null;
+            }
 
             NameValueCollection qs = HttpUtility.ParseQueryString(res.Query);
-            if (string.IsNullOrWhiteSpace(qs.Get(id)))
+            if (string.IsNullOrWhiteSpace(qs.Get(id))) {
                 return null;
+            }
 
             string variation = qs.Get(id);
             int varId;
+
             if (!int.TryParse(variation, out varId)) {
                 return null;
             }
             if (varId < 0 || varId >= numVariations) {
                 return null;
             }
+
             return varId;
         }
 
@@ -126,6 +120,21 @@ namespace GrowthBook {
             return true;
         }
 
+        // #region Private Helpers
+
+        private static uint FNV32A(string value) {
+            uint hash = 0x811c9dc5;
+            uint prime = 0x01000193;
+
+            foreach (char c in value.ToCharArray()) {
+                hash ^= c;
+                hash *= prime;
+            }
+
+            return hash;
+        }
+
+
         private static bool EvalOr(JToken attributes, JArray conditions) {
             if (conditions.Count == 0) {
                 return true;
@@ -151,27 +160,30 @@ namespace GrowthBook {
         }
 
         private static bool IsOperatorObject(JObject obj) {
-            foreach(JProperty property in obj.Properties()) {
+            foreach (JProperty property in obj.Properties()) {
                 if (!property.Name.StartsWith("$")) {
                     return false;
                 }
             }
+
             return true;
         }
 
         private static bool EvalConditionValue(JToken conditionValue, JToken attributeValue) {
             if (conditionValue.Type == JTokenType.Object) {
-                JObject conditionDict = (JObject)conditionValue;
-                if (conditionDict != null && IsOperatorObject(conditionDict)) {
-                    foreach (JProperty property in conditionDict.Properties()) {
+                JObject conditionObj = (JObject)conditionValue;
+
+                if (IsOperatorObject(conditionObj)) {
+                    foreach (JProperty property in conditionObj.Properties()) {
                         if (!EvalOperatorCondition(property.Name, attributeValue, property.Value)) {
                             return false;
                         }
                     }
+
                     return true;
                 }
             }
-            
+
             return JToken.DeepEquals(conditionValue, attributeValue);
         }
 
@@ -180,11 +192,11 @@ namespace GrowthBook {
                 return false;
             }
 
-            foreach (JToken item in (JArray)attributeVaue) {
-                if (IsOperatorObject(condition) && EvalConditionValue(condition, item)) {
+            foreach (JToken elem in (JArray)attributeVaue) {
+                if (IsOperatorObject(condition) && EvalConditionValue(condition, elem)) {
                     return true;
                 }
-                if (EvalCondition(item, condition)) {
+                if (EvalCondition(elem, condition)) {
                     return true;
                 }
             }
@@ -194,13 +206,14 @@ namespace GrowthBook {
 
         private static bool EvalOperatorCondition(string op, JToken attributeValue, JToken conditionValue) {
             if (op.Equals("$eq")) {
-                return attributeValue.Equals(conditionValue);
+                return conditionValue.Equals(attributeValue);
             }
             if (op.Equals("$ne")) {
-                return !attributeValue.Equals(conditionValue);
+                return !conditionValue.Equals(attributeValue);
             }
             if (attributeValue is IComparable) {
                 IComparable attrComp = (IComparable)attributeValue;
+
                 if (op.Equals("$lt")) {
                     return attrComp.CompareTo(conditionValue) < 0;
                 }
@@ -216,36 +229,38 @@ namespace GrowthBook {
             }
             if (op.Equals("$regex")) {
                 try {
-                    Regex regex = new Regex(conditionValue.ToString(), RegexOptions.Compiled);
-                    return regex.IsMatch(attributeValue.ToString());
+                    return Regex.IsMatch(attributeValue?.ToString(), conditionValue?.ToString());
                 } catch (ArgumentException) {
                     return false;
                 }
             }
             if (conditionValue.Type == JTokenType.Array) {
                 JArray conditionList = (JArray)conditionValue;
+
                 if (op.Equals("$in")) {
-                    return attributeValue != null && conditionList.FirstOrDefault(j => j.ToString().Equals(attributeValue.ToString())) != null;
+                    return conditionList.FirstOrDefault(j => j.ToString().Equals(attributeValue?.ToString())) != null;
                 }
                 if (op.Equals("$nin")) {
-                    return conditionList.FirstOrDefault(j => j.ToString().Equals(attributeValue.ToString())) == null;
+                    return conditionList.FirstOrDefault(j => j.ToString().Equals(attributeValue?.ToString())) == null;
                 }
                 if (op.Equals("$all")) {
-                    if (attributeValue.Type != JTokenType.Array) {
-                        return false;
-                    }
-                    foreach (JToken condition in conditionList) {
-                        bool passing = false;
-                        foreach (JToken attr in (JArray)attributeValue) {
-                            if (EvalConditionValue(condition, attr)) {
-                                passing = true;
+                    if (attributeValue?.Type == JTokenType.Array) {
+                        foreach (JToken condition in conditionList) {
+                            bool passing = false;
+
+                            foreach (JToken attr in (JArray)attributeValue) {
+                                if (EvalConditionValue(condition, attr)) {
+                                    passing = true;
+                                }
+                            }
+
+                            if (!passing) {
+                                return false;
                             }
                         }
-                        if (!passing) {
-                            return false;
-                        }
+
+                        return true;
                     }
-                    return true;
                 }
             }
             if (op.Equals("$elemMatch")) {
@@ -255,7 +270,6 @@ namespace GrowthBook {
                 if (attributeValue?.Type == JTokenType.Array) {
                     return EvalConditionValue(conditionValue, ((JArray)attributeValue).Count);
                 }
-                return false;
             }
             if (op.Equals("$exists")) {
                 return conditionValue.ToObject<bool>() ? attributeValue != null && attributeValue.Type != JTokenType.Null && attributeValue.Type != JTokenType.Undefined :
@@ -275,7 +289,7 @@ namespace GrowthBook {
                 return "null";
             }
 
-            switch(attributeValue.Type) {
+            switch (attributeValue.Type) {
                 case JTokenType.Null:
                 case JTokenType.Undefined:
                     return "null";
@@ -294,5 +308,7 @@ namespace GrowthBook {
                     return "unknown";
             }
         }
+
+        // #endregion
     }
 }

@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace Tests {
@@ -25,15 +26,15 @@ namespace Tests {
             return Math.Round(input, 6);
         }
 
-        public double[] RoundArray(double[] input) {
-            double[] results = new double[input.Length];
-            for (int i = 0; i < input.Length; i++) {
-                results[i] = RoundStandard(input[i]);
+        public IList<double> RoundArray(IList<double> input) {
+            List<double> results = new List<double>();
+            for (int i = 0; i < input.Count; i++) {
+                results.Add(RoundStandard(input[i]));
             }
             return results;
         }
 
-        public List<BucketRange> RoundBucketRanges(List<BucketRange> input) {
+        public IList<BucketRange> RoundBucketRanges(IList<BucketRange> input) {
             List<BucketRange> results = new List<BucketRange>();
             foreach (BucketRange range in input) {
                 results.Add(new BucketRange(RoundStandard(range.Start), RoundStandard(range.End)));
@@ -79,9 +80,9 @@ namespace Tests {
 
         [TestMethod]
         [DynamicData(nameof(GetEqualWeightsTests), DynamicDataSourceType.Method, DynamicDataDisplayName = nameof(GetTestNames))]
-        public void GetEqualWeights(int input, double[] expected) {
-            double[] actual = GrowthBook.Utilities.GetEqualWeights(input);
-            CollectionAssert.AreEqual(RoundArray(expected), RoundArray(actual));
+        public void GetEqualWeights(int input, IList<double> expected) {
+            IList<double> actual = GrowthBook.Utilities.GetEqualWeights(input);
+            Assert.IsTrue(RoundArray(expected).SequenceEqual(RoundArray(actual)));
         }
 
         public static IEnumerable<object[]> GetEqualWeightsTests() {
@@ -96,8 +97,8 @@ namespace Tests {
         [TestMethod]
         [DynamicData(nameof(GetBucketRangeTests), DynamicDataSourceType.Method, DynamicDataDisplayName = nameof(GetTestNames))]
         public void GetBucketRanges(string testName, int numVariations, double coverage, double[] weights, List<BucketRange> expected) {
-            List<BucketRange> actual = GrowthBook.Utilities.GetBucketRanges(numVariations, coverage, weights);
-            CollectionAssert.AreEqual(RoundBucketRanges(expected), RoundBucketRanges(actual));
+            IList<BucketRange> actual = GrowthBook.Utilities.GetBucketRanges(numVariations, coverage, weights);
+            Assert.IsTrue(RoundBucketRanges(expected).SequenceEqual(RoundBucketRanges(actual)));
         }
 
         public static IEnumerable<object[]> GetBucketRangeTests() {
