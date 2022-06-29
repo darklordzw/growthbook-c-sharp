@@ -13,31 +13,53 @@ namespace GrowthBook
     /// </summary>
     public class GrowthBook
     {
-        private Context context;
-        private Dictionary<string, ExperimentAssignment> _assigned;
-        private List<Func<Experiment, ExperimentResult, Task>> _subscriptions;
+        private bool enabled;
+        private JObject attributes;
+        private string url;
+        private IDictionary<string, Feature> features;
+        private JObject forcedVariations;
+        private bool qaMode;
+        private Action<Experiment, ExperimentResult> trackingCallback;
+
+        private Dictionary<string, ExperimentAssignment> assigned;
+        private HashSet<string> tracked;
+        private List<Action<Experiment, ExperimentResult>> subscriptions;
 
         public GrowthBook(Context context) {
-            this.context = context;
+            enabled = context.Enabled;
+            attributes = context.Attributes;
+            url = context.Url;
+            features = context.Features;
+            forcedVariations = context.ForcedVariations;
+            qaMode = context.QaMode;
+            trackingCallback = context.TrackingCallback;
 
-            //# Deprecated args
-            //_user = user
-            //_groups = groups
-            //_overrides = overrides
-            //_forcedVariations = forcedVariations
+            tracked = new HashSet<string>();
+            assigned = new Dictionary<string, ExperimentAssignment>();
+            subscriptions = new List<Action<Experiment, ExperimentResult>>();
+        }
 
-            //_tracked = { }
-            _assigned = new Dictionary<string, ExperimentAssignment>();
-            _subscriptions = new List<Func<Experiment, ExperimentResult, Task>>();
+        ~GrowthBook() {
+            Destroy();
         }
 
         public JObject Attributes {
-            get { return context.Attributes; }
-            set { context.Attributes = value; }
+            get { return attributes; }
+            set { attributes = value; }
         }
 
         public IDictionary<string, Feature> Features {
-            get { return context.Features; }
+            get { return features; }
+        }
+
+        public void Destroy() {
+            subscriptions.Clear();
+            tracked.Clear();
+            assigned.Clear();
+            trackingCallback = null;
+            forcedVariations = null;
+            attributes = null;
+            features.Clear();
         }
 
         public bool IsOn(string key) {
@@ -56,15 +78,24 @@ namespace GrowthBook
             return result.Value.ToObject<T>();
         }
 
+        public IDictionary<string, ExperimentAssignment> GetAllResults() {
+            return assigned;
+        }
+
+        public Action Subscribe(Action<Experiment, ExperimentResult> callback) {
+            subscriptions.Add(callback);
+            return () => subscriptions.Remove(callback);
+        }
+
         public FeatureResult EvalFeature(string key) {
             Feature feature;
-            if (!context.Features.TryGetValue(key, out feature)) {
+            if (!features.TryGetValue(key, out feature)) {
                 return new FeatureResult { Source = "unknownFeature" };
             }
 
             foreach (FeatureRule rule in feature.Rules) {
                 if (rule.Condition != null) {
-                    if (!Utilities.EvalCondition(context.Attributes, rule.Condition)) {
+                    if (!Utilities.EvalCondition(attributes, rule.Condition)) {
                         continue;
                     }
                 }
@@ -111,12 +142,12 @@ namespace GrowthBook
         }
 
         public ExperimentResult Run(Experiment experiment) {
-            ExperimentResult result = _Run(experiment);
+            ExperimentResult result = RunExperiment(experiment);
 
             ExperimentAssignment prev;
-            if (!_assigned.TryGetValue(experiment.Key, out prev) || prev.Result.InExperiment != result.InExperiment || prev.Result.VariationId != result.VariationId) {
-                _assigned.Add(experiment.Key, new ExperimentAssignment { Experiment = experiment, Result = result });
-                foreach(Func<Experiment, ExperimentResult, Task> cb in _subscriptions) {
+            if (!assigned.TryGetValue(experiment.Key, out prev) || prev.Result.InExperiment != result.InExperiment || prev.Result.VariationId != result.VariationId) {
+                assigned.Add(experiment.Key, new ExperimentAssignment { Experiment = experiment, Result = result });
+                foreach(Action<Experiment, ExperimentResult> cb in subscriptions) {
                     try {
                         cb.Invoke(experiment, result);
                     } catch (Exception) { }
@@ -126,26 +157,26 @@ namespace GrowthBook
             return result;
         }
 
-        private ExperimentResult _Run(Experiment experiment) {
+        private ExperimentResult RunExperiment(Experiment experiment) {
             // 1. If experiment has less than 2 variations, return immediately
             if (experiment.Variations.Count < 2) {
                 return GetExperimentResult(experiment);
             }
 
             // 2. If growthbook is disabled, return immediately
-            if (!context.Enabled) {
+            if (!enabled) {
                 return GetExperimentResult(experiment);
             }
 
             // 3. If experiment is forced via a querystring in the url
-            int? queryString = Utilities.GetQueryStringOverride(experiment.Key, context.Url, experiment.Variations.Count);
+            int? queryString = Utilities.GetQueryStringOverride(experiment.Key, url, experiment.Variations.Count);
             if (queryString != null) {
                 return GetExperimentResult(experiment, (int)queryString);
             }
 
             // 4. If variation is forced in the context
             JToken forcedVariation;
-            if (context.ForcedVariations.TryGetValue(experiment.Key, out forcedVariation)) {
+            if (forcedVariations.TryGetValue(experiment.Key, out forcedVariation)) {
                 return GetExperimentResult(experiment, forcedVariation.ToObject<int>());
             }
 
@@ -167,7 +198,7 @@ namespace GrowthBook
             }
 
             // 8. Exclude if condition is false
-            if (experiment.Condition != null && !Utilities.EvalCondition(context.Attributes, experiment.Condition)) {
+            if (experiment.Condition != null && !Utilities.EvalCondition(attributes, experiment.Condition)) {
                 return GetExperimentResult(experiment);
             }
 
@@ -187,7 +218,7 @@ namespace GrowthBook
             }
 
             // 12. Exclude if in QA mode
-            if (context.QaMode) {
+            if (qaMode) {
                 return GetExperimentResult(experiment);
             }
 
@@ -195,7 +226,7 @@ namespace GrowthBook
             ExperimentResult result = GetExperimentResult(experiment, assigned, true);
 
             // 14. Fire the tracking callback if set
-            if (context.TrackingCallback != null) {
+            if (trackingCallback != null) {
                 // TODO: CALL THE TRACKING CALLBACK
                 //self._track(experiment, result)
             }
@@ -224,24 +255,24 @@ namespace GrowthBook
         }
 
         private string GetHashValue(string attr) {
-            if (context.Attributes.ContainsKey(attr)) {
-                return context.Attributes[attr].ToString();
+            if (attributes.ContainsKey(attr)) {
+                return attributes[attr].ToString();
             }
             return string.Empty;
         }
 
         private bool UrlIsValid(string pattern) {
-            if (string.IsNullOrEmpty(context.Url)) {
+            if (string.IsNullOrEmpty(url)) {
                 return false;
             }
 
             try {
                 Regex r = new Regex(pattern);
-                if (r.IsMatch(context.Url)) {
+                if (r.IsMatch(url)) {
                     return true;
                 }
 
-                string pathOnly = Regex.Replace("^[^/]*/", "/", Regex.Replace(@"^https?:\/\/", "", context.Url));
+                string pathOnly = Regex.Replace("^[^/]*/", "/", Regex.Replace(@"^https?:\/\/", "", url));
                 if (r.IsMatch(pathOnly)) {
                     return true;
                 }
@@ -251,52 +282,19 @@ namespace GrowthBook
                 return true;
             }
         }
+
+        private void Track(Experiment experiment, ExperimentResult result) {
+            if (trackingCallback == null) {
+                return;
+            }
+
+            string key = result.HashAttribute + result.HashValue + experiment.Key + result.VariationId;
+            if (!tracked.Contains(key)) {
+                try {
+                    trackingCallback(experiment, result);
+                    tracked.Add(key);
+                } catch (Exception) { }
+            }
+        }
     }
 }
-
-//class GrowthBook(object):
-//    def destroy(self) -> None:
-//        self._subscriptions.clear()
-//        self._tracked.clear()
-//        self._assigned.clear()
-//        self._trackingCallback = None
-//        self._forcedVariations.clear()
-//        self._overrides.clear()
-//        self._groups.clear()
-//        self._attributes.clear()
-//        self._features.clear()
-
-
-
-//    def getAllResults(self):
-//        return self._assigned.copy()
-
-
-
-
-
-//    def subscribe(self, callback) :
-//        self._subscriptions.add(callback)
-//        return lambda: self._subscriptions.remove(callback)
-
-
-
-//    def _track(self, experiment: Experiment, result: Result) -> None:
-//        if not self._trackingCallback:
-//            return None
-//        key = (
-//            result.hashAttribute
-//            + str(result.hashValue)
-//            + experiment.key
-//            + str(result.variationId)
-//        )
-//        if not self._tracked.get(key):
-//            try:
-//                self._trackingCallback(experiment= experiment, result= result)
-//                self._tracked[key] = True
-//            except Exception:
-//                pass
-
-
-
-

@@ -11,6 +11,6 @@ namespace GrowthBook {
         public IDictionary<string, Feature> Features { get; set; } = new Dictionary<string, Feature>();
         public JObject ForcedVariations { get; set; } = new JObject();
         public bool QaMode { get; set; } = false;
-        public Func<Experiment, ExperimentResult, Task> TrackingCallback { get; set; }
+        public Action<Experiment, ExperimentResult> TrackingCallback { get; set; }
     }
 }
