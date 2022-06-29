@@ -184,7 +184,7 @@ namespace GrowthBook {
                 }
             }
 
-            return JToken.DeepEquals(conditionValue, attributeValue);
+            return JToken.DeepEquals(conditionValue ?? JValue.CreateNull(), attributeValue ?? JValue.CreateNull());
         }
 
         private static bool ElemMatch(JObject condition, JToken attributeVaue) {

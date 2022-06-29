@@ -1,6 +1,5 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System;
 
 namespace GrowthBook {
     [JsonConverter(typeof(NamespaceTupleConverter))]
@@ -19,28 +18,13 @@ namespace GrowthBook {
         public double End { get; }
 
         public override string ToString() => $"({Id}, {Start}, {End})";
-    }
 
-    public class NamespaceTupleConverter : JsonConverter {
-        public override bool CanConvert(Type objectType) {
-            return objectType == typeof(Namespace);
-        }
-
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
-            JToken token = JToken.Load(reader);
-            if (token.Type == JTokenType.Array) {
-                return new Namespace((JArray)token);
+        public override bool Equals(object obj) {
+            if (obj.GetType() == typeof(Namespace)) {
+                Namespace objNamspace = (Namespace)obj;
+                return Id == objNamspace.Id && Start == objNamspace.Start && End == objNamspace.End;
             }
-            return token.ToObject<Namespace>();
-        }
-
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-            Namespace valueNamespace = (Namespace)value;
-            JArray t = new JArray();
-            t.Add(JToken.FromObject(valueNamespace.Id));
-            t.Add(JToken.FromObject(valueNamespace.Start));
-            t.Add(JToken.FromObject(valueNamespace.End));
-            t.WriteTo(writer);
+            return false;
         }
     }
 }

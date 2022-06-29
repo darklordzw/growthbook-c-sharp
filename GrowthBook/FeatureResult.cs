@@ -15,5 +15,18 @@ namespace GrowthBook {
         public T GetValue<T>() {
             return Value.ToObject<T>();
         }
+
+        public override bool Equals(object obj) {
+            if (obj.GetType() == typeof(FeatureResult)) {
+                FeatureResult objResult = (FeatureResult)obj;
+                return object.Equals(Experiment, objResult.Experiment)
+                    && object.Equals(ExperimentResult, objResult.ExperimentResult)
+                    && Off == objResult.Off
+                    && On == objResult.On
+                    && Source == objResult.Source
+                    && JToken.DeepEquals(Value ?? JValue.CreateNull(), objResult.Value ?? JValue.CreateNull());
+            }
+            return false;
+        }
     }
 }

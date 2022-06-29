@@ -8,7 +8,7 @@ namespace GrowthBook {
     public class FeatureRule {
         public JObject Condition { get; set; }
         public double Coverage { get; set; } = 1;
-        public int? Force { get; set; }
+        public JValue Force { get; set; }
         public string HashAttribute { get; set; } = "id";
         public string Key { get; set; }
         public Namespace Namespace { get; set; }

@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace GrowthBook {
     [JsonObject(NamingStrategyType = typeof(CamelCaseNamingStrategy))]
@@ -18,6 +19,22 @@ namespace GrowthBook {
 
         public T GetVariations<T>() {
             return Variations.ToObject<T>();
+        }
+
+        public override bool Equals(object obj) {
+            if (obj.GetType() == typeof(Experiment)) {
+                Experiment objExp = (Experiment)obj;
+                return Active == objExp.Active
+                    && JToken.DeepEquals(Condition, objExp.Condition)
+                    && Coverage == objExp.Coverage
+                    && Force == objExp.Force
+                    && HashAttribute == objExp.HashAttribute
+                    && Key == objExp.Key
+                    && object.Equals(Namespace, objExp.Namespace)
+                    && JToken.DeepEquals(Variations, objExp.Variations)
+                    && ((Weights == null && objExp.Weights == null) || Weights.SequenceEqual(objExp.Weights));
+            }
+            return false;
         }
     }
 }
