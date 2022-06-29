@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace GrowthBook {
     [JsonObject(NamingStrategyType = typeof(CamelCaseNamingStrategy))]
     public class Feature {
-        public JValue DefaultValue { get; set; }
+        public JToken DefaultValue { get; set; }
         public IList<FeatureRule> Rules { get; set; } = new List<FeatureRule>();
 
         public T GetDefaultValue<T>() {

@@ -9,7 +9,7 @@ namespace GrowthBook {
         public string HashAttribute { get; set; }
         public bool HashUsed { get; set; }
         public string HashValue { get; set; }
-        public JValue Value { get; set; }
+        public JToken Value { get; set; }
         public int VariationId { get; set; }
 
         public T GetValue<T>() {
