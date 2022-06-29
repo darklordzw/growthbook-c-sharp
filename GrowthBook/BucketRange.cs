@@ -1,13 +1,26 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using System;
 
 namespace GrowthBook {
+    /// <summary>
+    /// Represents a range of the numberline between 0 and 1.
+    /// </summary>
+    [JsonObject(NamingStrategyType = typeof(CamelCaseNamingStrategy))]
     public class BucketRange {
         public BucketRange(double start, double end) {
             Start = start;
             End = end;
         }
 
+        /// <summary>
+        /// The start of the range.
+        /// </summary>
         public double Start { get; set; }
+
+        /// <summary>
+        /// The end of the range.
+        /// </summary>
         public double End { get; set; }
 
         public override bool Equals(object obj) {
@@ -21,7 +34,5 @@ namespace GrowthBook {
         public override int GetHashCode() {
             throw new NotImplementedException();
         }
-
-        public override string ToString() => $"({Start}, {End})";
     }
 }
