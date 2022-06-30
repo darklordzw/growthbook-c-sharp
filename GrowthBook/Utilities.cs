@@ -356,8 +356,8 @@ namespace GrowthBook {
                 }
             }
             if (op == "$exists") {
-                return conditionValue.ToObject<bool>() ? attributeValue != null && attributeValue.Type != JTokenType.Null && attributeValue.Type != JTokenType.Undefined :
-                    attributeValue == null || attributeValue.Type == JTokenType.Null || attributeValue.Type == JTokenType.Undefined;
+                return conditionValue.ToObject<bool>() ? attributeValue != null && attributeValue.Type != JTokenType.Null :
+                    attributeValue == null || attributeValue.Type == JTokenType.Null;
             }
             if (op == "$type") {
                 return GetType(attributeValue).Equals(conditionValue.ToString());

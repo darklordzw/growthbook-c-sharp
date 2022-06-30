@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.31911.196
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GrowthBook", "GrowthBook\GrowthBook.csproj", "{EB2E6969-D39E-4093-B267-826226DE50DC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{649FDBB7-2442-4DF5-B493-401D2ECF527D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Growthbook.Tests", "Test\Growthbook.Tests.csproj", "{649FDBB7-2442-4DF5-B493-401D2ECF527D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

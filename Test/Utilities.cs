@@ -7,7 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 
-namespace Tests {
+namespace Growthbook.Tests {
     [TestClass]
     public class Utilities {
         public static JObject testCases;

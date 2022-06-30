@@ -1,14 +1,11 @@
 ﻿using GrowthBook;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 
-namespace Tests {
+namespace Growthbook.Tests {
     [TestClass]
     public class GrowthBookTests {
         public static JObject testCases;

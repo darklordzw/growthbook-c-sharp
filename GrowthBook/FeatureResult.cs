@@ -14,7 +14,7 @@ namespace GrowthBook {
         /// <summary>
         /// The assigned value cast to a boolean.
         /// </summary>
-        public bool On { get { return Value != null && Value.Type != JTokenType.Null && Value.Type != JTokenType.Undefined; } }
+        public bool On { get { return Value != null && Value.Type != JTokenType.Null; } }
 
         /// <summary>
         /// The assigned value cast to a boolean and then negated.
