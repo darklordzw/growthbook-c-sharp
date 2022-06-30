@@ -14,7 +14,7 @@ namespace Growthbook.Tests {
 
         [ClassInitialize]
         public static void TestFixtureSetup(TestContext context) {
-            testCases = JObject.Parse(File.ReadAllText("../../cases.json"));
+            testCases = JObject.Parse(File.ReadAllText("../../standard-cases.json"));
         }
 
         public static string GetTestNames(MethodInfo methodInfo, object[] values) {

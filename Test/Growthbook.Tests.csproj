@@ -57,7 +57,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="cases.json" />
+    <None Include="custom-cases.json" />
+    <None Include="standard-cases.json" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

@@ -1,6 +1,7 @@
 ﻿using GrowthBook;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -9,10 +10,12 @@ namespace Growthbook.Tests {
     [TestClass]
     public class GrowthBookTests {
         public static JObject testCases;
+        public static JObject customCases;
 
         [ClassInitialize]
         public static void TestFixtureSetup(TestContext context) {
-            testCases = JObject.Parse(File.ReadAllText("../../cases.json"));
+            testCases = JObject.Parse(File.ReadAllText("../../standard-cases.json"));
+            customCases = JObject.Parse(File.ReadAllText("../../custom-cases.json"));
         }
 
         public static string GetTestNames(MethodInfo methodInfo, object[] values) {
@@ -40,6 +43,63 @@ namespace Growthbook.Tests {
                     testCase[5].ToObject<bool>(),
                 };
             }
+        }
+
+        [TestMethod]
+        public void Run_ShouldCallTrackingCallbackOnce() {
+            JArray testCase = (JArray)customCases["run"];
+            int trackingCounter = 0;
+
+            Context context = testCase[0].ToObject<Context>();
+            context.TrackingCallback = (Experiment experiment, ExperimentResult result) => {
+                Assert.IsTrue(JToken.DeepEquals(result.Value, testCase[2]));
+                Assert.AreEqual(testCase[3].ToObject<bool>(), result.InExperiment);
+                Assert.AreEqual(testCase[4].ToObject<bool>(), result.HashUsed);
+                trackingCounter++;
+            };
+
+            GrowthBook.GrowthBook gb = new GrowthBook.GrowthBook(context);
+            gb.Run(testCase[1].ToObject<Experiment>());
+            gb.Run(testCase[1].ToObject<Experiment>());
+            Assert.AreEqual(1, trackingCounter);
+        }
+
+        [TestMethod]
+        public void Run_ShouldCallSubscribedCallbacks() {
+            JArray testCase = (JArray)customCases["run"];
+            GrowthBook.GrowthBook gb = new GrowthBook.GrowthBook(testCase[0].ToObject<Context>());
+
+            int subCounterOne = 0;
+            gb.Subscribe((Experiment experiment, ExperimentResult result) => {
+                Assert.IsTrue(JToken.DeepEquals(result.Value, testCase[2]));
+                Assert.AreEqual(testCase[3].ToObject<bool>(), result.InExperiment);
+                Assert.AreEqual(testCase[4].ToObject<bool>(), result.HashUsed);
+                subCounterOne++;
+            });
+
+            int subCounterTwo = 0;
+            Action unsubscribe = gb.Subscribe((Experiment experiment, ExperimentResult result) => {
+                Assert.IsTrue(JToken.DeepEquals(result.Value, testCase[2]));
+                Assert.AreEqual(testCase[3].ToObject<bool>(), result.InExperiment);
+                Assert.AreEqual(testCase[4].ToObject<bool>(), result.HashUsed);
+                subCounterTwo++;
+            });
+            unsubscribe();
+
+            int subCounterThree = 0;
+            gb.Subscribe((Experiment experiment, ExperimentResult result) => {
+                Assert.IsTrue(JToken.DeepEquals(result.Value, testCase[2]));
+                Assert.AreEqual(testCase[3].ToObject<bool>(), result.InExperiment);
+                Assert.AreEqual(testCase[4].ToObject<bool>(), result.HashUsed);
+                subCounterThree++;
+            });
+
+            gb.Run(testCase[1].ToObject<Experiment>());
+            gb.Run(testCase[1].ToObject<Experiment>());
+            gb.Run(testCase[1].ToObject<Experiment>());
+            Assert.AreEqual(1, subCounterOne);
+            Assert.AreEqual(0, subCounterTwo);
+            Assert.AreEqual(1, subCounterThree);
         }
 
         [TestMethod]
