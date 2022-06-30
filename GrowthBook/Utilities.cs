@@ -1,6 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -8,17 +7,36 @@ using System.Text.RegularExpressions;
 using System.Web;
 
 namespace GrowthBook {
+    /// <summary>
+    /// Utility functions used by the GrowthBook class.
+    /// </summary>
     public static class Utilities {
+        /// <summary>
+        /// Hashes a string to a double between 0 and 1 using the simple Fowler–Noll–Vo algorithm (fnv32a).
+        /// </summary>
+        /// <param name="str">The string to hash.</param>
+        /// <returns>Double between 0 and 1.</returns>
         public static double Hash(string str) {
             uint n = FNV32A(str);
             return (n % 1000) / 1000.0;
         }
 
+        /// <summary>
+        /// Checks if a userId is within an experiment namespace or not.
+        /// </summary>
+        /// <param name="userId">The user id string to check.</param>
+        /// <param name="nSpace">The namespace to check.</param>
+        /// <returns>True if the userid is within the experiment namespace.</returns>
         public static bool InNamespace(string userId, Namespace nSpace) {
             double n = Hash(userId + "__" + nSpace.Id);
             return n >= nSpace.Start && n < nSpace.End;
         }
 
+        /// <summary>
+        /// Returns an array of doubles with numVariations items that are all equal and sum to 1.
+        /// </summary>
+        /// <param name="numVariations">The number of variations to generate weights for.</param>
+        /// <returns>Array of doubles with numVariations items that are all equal and sum to 1.</returns>
         public static IList<double> GetEqualWeights(int numVariations) {
             List<double> weights = new List<double>();
 
@@ -31,6 +49,13 @@ namespace GrowthBook {
             return weights;
         }
 
+        /// <summary>
+        /// Converts an experiment's coverage and variation weights into an list of bucket ranges.
+        /// </summary>
+        /// <param name="numVariations">The number of variations to convert.</param>
+        /// <param name="coverage">The experiment's coverage (defaults to 1).</param>
+        /// <param name="weights">Optional list of variant weights.</param>
+        /// <returns>A list of bucket ranges.</returns>
         public static IList<BucketRange> GetBucketRanges(int numVariations, double coverage = 1, IList<double> weights = null) {
             if (coverage < 0) {
                 coverage = 0;
@@ -59,6 +84,12 @@ namespace GrowthBook {
             return ranges;
         }
 
+        /// <summary>
+        /// Given a hash and bucket ranges, assign one of the bucket ranges.
+        /// </summary>
+        /// <param name="n">The hash value.</param>
+        /// <param name="ranges">LIst of bucket ranges to compare the hash to.</param>
+        /// <returns>The selected variation id, or -1 if no match is found.</returns>
         public static int ChooseVariation(double n, IList<BucketRange> ranges) {
             for (int i = 0; i < ranges.Count; i++) {
                 if (n >= ranges[i].Start && n < ranges[i].End) {
@@ -69,6 +100,13 @@ namespace GrowthBook {
             return -1;
         }
 
+        /// <summary>
+        /// Checks if an experiment variation is being forced via a URL query string.
+        /// </summary>
+        /// <param name="id">The id field to search for in the query string.</param>
+        /// <param name="url">The url to search.</param>
+        /// <param name="numVariations">The number of variations in the experiment.</param>
+        /// <returns>The overridden variation id, or null if not found.</returns>
         public static int? GetQueryStringOverride(string id, string url, int numVariations) {
             if (string.IsNullOrWhiteSpace(url)) {
                 return null;
@@ -97,6 +135,12 @@ namespace GrowthBook {
             return varId;
         }
 
+        /// <summary>
+        /// The main function used to evaluate a condition.
+        /// </summary>
+        /// <param name="attributes">The attributes to compare against.</param>
+        /// <param name="condition">The condition to evaluate.</param>
+        /// <returns>True if the attributes satisfy the condition.</returns>
         public static bool EvalCondition(JToken attributes, JObject condition) {
             if (condition.ContainsKey("$or")) {
                 return EvalOr(attributes, (JArray)condition["$or"]);
@@ -122,7 +166,12 @@ namespace GrowthBook {
 
         // #region Private Helpers
 
-        private static uint FNV32A(string value) {
+        /// <summary>
+        /// Implementation of the Fowler–Noll–Vo algorithm (fnv32a) algorithm.
+        /// </summary>
+        /// <param name="value">The value to hash.</param>
+        /// <returns>The hashed value.</returns>
+        static uint FNV32A(string value) {
             uint hash = 0x811c9dc5;
             uint prime = 0x01000193;
 
@@ -134,8 +183,13 @@ namespace GrowthBook {
             return hash;
         }
 
-
-        private static bool EvalOr(JToken attributes, JArray conditions) {
+        /// <summary>
+        /// Returns true if the attributes satisfy any of the conditions.
+        /// </summary>
+        /// <param name="attributes">The attributes to compare against.</param>
+        /// <param name="condition">The condition to evaluate.</param>
+        /// <returns>True if the attributes satisfy any of the conditions.</returns>
+        static bool EvalOr(JToken attributes, JArray conditions) {
             if (conditions.Count == 0) {
                 return true;
             }
@@ -149,7 +203,13 @@ namespace GrowthBook {
             return false;
         }
 
-        private static bool EvalAnd(JToken attributes, JArray conditions) {
+        /// <summary>
+        /// Returns true if the attributes satisfy all of the conditions.
+        /// </summary>
+        /// <param name="attributes">The attributes to compare against.</param>
+        /// <param name="condition">The condition to evaluate.</param>
+        /// <returns>True if the attributes satisfy all of the conditions.</returns>
+        static bool EvalAnd(JToken attributes, JArray conditions) {
             foreach (JObject condition in conditions) {
                 if (!EvalCondition(attributes, condition)) {
                     return false;
@@ -159,7 +219,12 @@ namespace GrowthBook {
             return true;
         }
 
-        private static bool IsOperatorObject(JObject obj) {
+        /// <summary>
+        /// Checks to see if every key in the object is an operator.
+        /// </summary>
+        /// <param name="obj">The object to check.</param>
+        /// <returns>True if every key in the object starts with $.</returns>
+        static bool IsOperatorObject(JObject obj) {
             foreach (JProperty property in obj.Properties()) {
                 if (!property.Name.StartsWith("$")) {
                     return false;
@@ -169,7 +234,13 @@ namespace GrowthBook {
             return true;
         }
 
-        private static bool EvalConditionValue(JToken conditionValue, JToken attributeValue) {
+        /// <summary>
+        /// Checks to see if a condition value matches an attribute value.
+        /// </summary>
+        /// <param name="conditionValue">The condition value to check.</param>
+        /// <param name="attributeValue">The attribute value to check.</param>
+        /// <returns>True if the condition value matches the attribute value.</returns>
+        static bool EvalConditionValue(JToken conditionValue, JToken attributeValue) {
             if (conditionValue.Type == JTokenType.Object) {
                 JObject conditionObj = (JObject)conditionValue;
 
@@ -187,7 +258,13 @@ namespace GrowthBook {
             return JToken.DeepEquals(conditionValue ?? JValue.CreateNull(), attributeValue ?? JValue.CreateNull());
         }
 
-        private static bool ElemMatch(JObject condition, JToken attributeVaue) {
+        /// <summary>
+        /// Checks if attributeValue is an array, and if so at least one of the array items must match the condition.
+        /// </summary>
+        /// <param name="condition">The condition to check.</param>
+        /// <param name="attributeVaue">The attribute value to check.</param>
+        /// <returns>True if attributeValue is an array and at least one of the array items matches the condition.</returns>
+        static bool ElemMatch(JObject condition, JToken attributeVaue) {
             if (attributeVaue.Type != JTokenType.Array) {
                 return false;
             }
@@ -204,30 +281,37 @@ namespace GrowthBook {
             return false;
         }
 
-        private static bool EvalOperatorCondition(string op, JToken attributeValue, JToken conditionValue) {
-            if (op.Equals("$eq")) {
+        /// <summary>
+        /// A switch that handles all the possible operators.
+        /// </summary>
+        /// <param name="op">The operator to check.</param>
+        /// <param name="attributeValue">The attribute value to check.</param>
+        /// <param name="conditionValue">The condition value to check.</param>
+        /// <returns></returns>
+        static bool EvalOperatorCondition(string op, JToken attributeValue, JToken conditionValue) {
+            if (op == "$eq") {
                 return conditionValue.Equals(attributeValue);
             }
-            if (op.Equals("$ne")) {
+            if (op == "$ne") {
                 return !conditionValue.Equals(attributeValue);
             }
             if (attributeValue is IComparable) {
                 IComparable attrComp = (IComparable)attributeValue;
 
-                if (op.Equals("$lt")) {
+                if (op == "$lt") {
                     return attrComp.CompareTo(conditionValue) < 0;
                 }
-                if (op.Equals("$lte")) {
+                if (op == "$lte") {
                     return attrComp.CompareTo(conditionValue) <= 0;
                 }
-                if (op.Equals("$gt")) {
+                if (op == "$gt") {
                     return attrComp.CompareTo(conditionValue) > 0;
                 }
-                if (op.Equals("$gte")) {
+                if (op == "$gte") {
                     return attrComp.CompareTo(conditionValue) >= 0;
                 }
             }
-            if (op.Equals("$regex")) {
+            if (op == "$regex") {
                 try {
                     return Regex.IsMatch(attributeValue?.ToString(), conditionValue?.ToString());
                 } catch (ArgumentException) {
@@ -237,13 +321,13 @@ namespace GrowthBook {
             if (conditionValue.Type == JTokenType.Array) {
                 JArray conditionList = (JArray)conditionValue;
 
-                if (op.Equals("$in")) {
+                if (op == "$in") {
                     return conditionList.FirstOrDefault(j => j.ToString().Equals(attributeValue?.ToString())) != null;
                 }
-                if (op.Equals("$nin")) {
+                if (op == "$nin") {
                     return conditionList.FirstOrDefault(j => j.ToString().Equals(attributeValue?.ToString())) == null;
                 }
-                if (op.Equals("$all")) {
+                if (op == "$all") {
                     if (attributeValue?.Type == JTokenType.Array) {
                         foreach (JToken condition in conditionList) {
                             bool passing = false;
@@ -263,28 +347,34 @@ namespace GrowthBook {
                     }
                 }
             }
-            if (op.Equals("$elemMatch")) {
+            if (op == "$elemMatch") {
                 return ElemMatch((JObject)conditionValue, attributeValue);
             }
-            if (op.Equals("$size")) {
+            if (op == "$size") {
                 if (attributeValue?.Type == JTokenType.Array) {
                     return EvalConditionValue(conditionValue, ((JArray)attributeValue).Count);
                 }
             }
-            if (op.Equals("$exists")) {
+            if (op == "$exists") {
                 return conditionValue.ToObject<bool>() ? attributeValue != null && attributeValue.Type != JTokenType.Null && attributeValue.Type != JTokenType.Undefined :
                     attributeValue == null || attributeValue.Type == JTokenType.Null || attributeValue.Type == JTokenType.Undefined;
             }
-            if (op.Equals("$type")) {
+            if (op == "$type") {
                 return GetType(attributeValue).Equals(conditionValue.ToString());
             }
-            if (op.Equals("$not")) {
+            if (op == "$not") {
                 return !EvalConditionValue(conditionValue, attributeValue);
             }
+
             return false;
         }
 
-        private static string GetType(JToken attributeValue) {
+        /// <summary>
+        /// Gets a string value representing the data type of an attribute value.
+        /// </summary>
+        /// <param name="attributeValue">The attribute value to check.</param>
+        /// <returns>String value representing the data type of an attribute value.</returns>
+        static string GetType(JToken attributeValue) {
             if (attributeValue == null) {
                 return "null";
             }

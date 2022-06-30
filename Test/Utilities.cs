@@ -1,6 +1,5 @@
 ﻿using GrowthBook;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -52,7 +51,7 @@ namespace Tests {
         public static IEnumerable<object[]> HashTests() {
             foreach (JArray testCase in (JArray)testCases["hash"]) {
                 yield return new object[] {
-                    testCase[0].ToObject<string>(),
+                    testCase[0].ToString(),
                     testCase[1].ToObject<double>()
                 };
             }
@@ -68,9 +67,9 @@ namespace Tests {
         public static IEnumerable<object[]> InNamespaceTests() {
             foreach (JArray testCase in (JArray)testCases["inNamespace"]) {
                 yield return new object[] {
-                    testCase[0].ToObject<string>(),
-                    testCase[1].ToObject<string>(),
-                    testCase[2][0].ToObject<string>(),
+                    testCase[0].ToString(),
+                    testCase[1].ToString(),
+                    testCase[2][0].ToString(),
                     testCase[2][1].ToObject<double>(),
                     testCase[2][2].ToObject<double>(),
                     testCase[3].ToObject<bool>(),
@@ -108,7 +107,7 @@ namespace Tests {
                     expected.Add(new BucketRange(jArray[0].ToObject<double>(), jArray[1].ToObject<double>()));
                 }
                 yield return new object[] {
-                    testCase[0].ToObject<string>(),
+                    testCase[0].ToString(),
                     testCase[1][0].ToObject<int>(),
                     testCase[1][1].ToObject<double>(),
                     testCase[1][2].ToObject<double[]>(),
@@ -131,7 +130,7 @@ namespace Tests {
                     ranges.Add(new BucketRange(jArray[0].ToObject<double>(), jArray[1].ToObject<double>()));
                 }
                 yield return new object[] {
-                    testCase[0].ToObject<string>(),
+                    testCase[0].ToString(),
                     testCase[1].ToObject<double>(),
                     ranges,
                     testCase[3].ToObject<int>(),
@@ -149,9 +148,9 @@ namespace Tests {
         public static IEnumerable<object[]> GetQueryStringOverrideTests() {
             foreach (JArray testCase in (JArray)testCases["getQueryStringOverride"]) {
                 yield return new object[] {
-                    testCase[0].ToObject<string>(),
-                    testCase[1].ToObject<string>(),
-                    testCase[2].ToObject<string>(),
+                    testCase[0].ToString(),
+                    testCase[1].ToString(),
+                    testCase[2].ToString(),
                     testCase[3].ToObject<int>(),
                     testCase[4].ToObject<int?>(),
                 };
@@ -168,7 +167,7 @@ namespace Tests {
         public static IEnumerable<object[]> EvalConditionTests() {
             foreach (JArray testCase in (JArray)testCases["evalCondition"]) {
                 yield return new object[] {
-                    testCase[0].ToObject<string>(),
+                    testCase[0].ToString(),
                     testCase[1],
                     testCase[2],
                     testCase[3].ToObject<bool>()

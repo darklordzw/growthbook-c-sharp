@@ -3,6 +3,10 @@ using Newtonsoft.Json.Linq;
 using System;
 
 namespace GrowthBook {
+    /// <summary>
+    /// Represents a JsonConverter object used to convert Namespaces
+    /// to and from JSON tuples.
+    /// </summary>
     public class NamespaceTupleConverter : JsonConverter {
         public override bool CanConvert(Type objectType) {
             return objectType == typeof(Namespace);

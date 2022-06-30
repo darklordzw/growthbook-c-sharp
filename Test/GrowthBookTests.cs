@@ -35,7 +35,7 @@ namespace Tests {
         public static IEnumerable<object[]> RunTests() {
             foreach (JArray testCase in (JArray)testCases["run"]) {
                 yield return new object[] {
-                    testCase[0].ToObject<string>(),
+                    testCase[0].ToString(),
                     testCase[1].ToObject<Context>(),
                     testCase[2].ToObject<Experiment>(),
                     testCase[3],
@@ -56,9 +56,9 @@ namespace Tests {
         public static IEnumerable<object[]> EvalFeatureTests() {
             foreach (JArray testCase in (JArray)testCases["feature"]) {
                 yield return new object[] {
-                    testCase[0].ToObject<string>(),
+                    testCase[0].ToString(),
                     testCase[1].ToObject<Context>(),
-                    testCase[2].ToObject<string>(),
+                    testCase[2].ToString(),
                     testCase[3].ToObject<FeatureResult>(),
                 };
             }
