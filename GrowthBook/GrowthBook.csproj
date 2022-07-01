@@ -11,7 +11,7 @@
     <RepositoryUrl>https://github.com/darklordzw/growthbook-c-sharp.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>GrowthBook,A/B test,feature toggle</PackageTags>
-    <Version>0.0.3</Version>
+    <Version>0.0.4</Version>
   </PropertyGroup>
 
   <ItemGroup>
