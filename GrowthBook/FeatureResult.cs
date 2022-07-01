@@ -20,7 +20,7 @@ namespace GrowthBook {
                     return false;
                 }
                 string strValue = Value.ToString();
-                return !string.IsNullOrEmpty(strValue) && strValue != "0";
+                return !string.IsNullOrEmpty(strValue) && strValue != "0" && strValue != "false";
             }
         }
 
