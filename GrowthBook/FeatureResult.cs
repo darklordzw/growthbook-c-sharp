@@ -14,7 +14,15 @@ namespace GrowthBook {
         /// <summary>
         /// The assigned value cast to a boolean.
         /// </summary>
-        public bool On { get { return Value != null && Value.Type != JTokenType.Null; } }
+        public bool On {
+            get {
+                if (Value == null || Value.Type == JTokenType.Null) {
+                    return false;
+                }
+                string strValue = Value.ToString();
+                return !string.IsNullOrEmpty(strValue) && strValue != "0";
+            }
+        }
 
         /// <summary>
         /// The assigned value cast to a boolean and then negated.
