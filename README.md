@@ -1,3 +1,5 @@
+> :warning: **We've moved!'**: The source code for this package has been moved to be part of the main GrowthBook project. The new repository can be found [here](https://github.com/growthbook/growthbook-csharp).
+
 # growthbook-c-sharp
 Powerful Feature flagging and A/B testing for C# apps using [GrowthBook](https://www.growthbook.io/)
 
